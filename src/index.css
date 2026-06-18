@@ -1,0 +1,72 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:ital,wght@0,300..800;1,300..800&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+@layer utilities {
+  .print-only-wrapper {
+    display: none;
+  }
+
+  /* Print styling rules */
+  @media print {
+    /* Hide all non-printable UI components */
+    .no-print {
+      display: none !important;
+    }
+
+    body {
+      background-color: white !important;
+      color: black !important;
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+
+    /* Target physical envelope size layout precisely */
+    @page {
+      size: 265mm 112mm;
+      margin: 0;
+    }
+
+    .print-only-wrapper {
+      display: block !important;
+    }
+
+    .print-container {
+      width: 265mm !important;
+      height: 112mm !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      page-break-after: always !important;
+      break-after: page !important;
+      box-shadow: none !important;
+      border: none !important;
+      background: white !important;
+      position: relative !important;
+      overflow: hidden !important;
+    }
+  }
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(241, 245, 249, 1);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(203, 213, 225, 1);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 1);
+}

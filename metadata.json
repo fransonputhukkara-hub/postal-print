@@ -1,0 +1,6 @@
+{
+  "name": "B2P Envelope Printer",
+  "description": "A print utility to import databases of schools, print standard 265mm x 112mm envelopes with clean alignments, and export data back to Excel.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
