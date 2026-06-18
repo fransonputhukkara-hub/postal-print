@@ -22,7 +22,8 @@ import {
   Clock,
   Phone,
   Grid,
-  Info
+  Info,
+  Sparkles
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { School, SenderInfo, PrinterPreset } from "./types";
@@ -303,6 +304,55 @@ export default function App() {
     setEditingSchool(null);
   };
 
+  const autoFormatAddressText = (text: string): string => {
+    if (!text) return "";
+    
+    // Split into lines to retain structure
+    const lines = text.split("\n");
+    
+    const formattedLines = lines.map((line) => {
+      const words = line.trim().split(/\s+/);
+      if (words.length === 1 && words[0] === "") return "";
+
+      const upperCaseAbbrs = ["po", "p.o.", "pin", "ph", "mla", "cms", "co", "io", "sl", "dl", "hp", "uk"];
+      const lowercaseConjs = ["and", "or", "of", "the", "in", "at", "by", "via", "for", "with", "to", "on"];
+      
+      const formattedWords = words.map((word, wordIndex) => {
+        // Keep pure numeric coordinates or phone country codes/numbers intact
+        if (/^\+?\d+[\/\d\-\+]*$/.test(word)) {
+          return word;
+        }
+        if (!/[a-zA-Z]/.test(word)) {
+          return word;
+        }
+        
+        const cleaned = word.toLowerCase().replace(/[^a-z]/g, "");
+        if (upperCaseAbbrs.includes(cleaned)) {
+          return word.toUpperCase();
+        }
+        
+        let newWord = word.toLowerCase();
+        if (wordIndex > 0 && lowercaseConjs.includes(cleaned)) {
+          return newWord;
+        }
+        
+        return newWord.replace(/(^[a-z]|(?<=\W)[a-z])/g, (c) => c.toUpperCase());
+      });
+      
+      let formattedLine = formattedWords.join(" ");
+      
+      // Ensure zip code spacing consistency using simple regex.
+      // Standardize 6-digit pin codes with consistent spacing (e.g., 680551 -> 680 551)
+      formattedLine = formattedLine.replace(/\b(\d{3})\s*(\d{3})\b/g, "$1 $2");
+      // Standardize US 5-4 digits ZIP code dashes
+      formattedLine = formattedLine.replace(/\b(\d{5})\s*-\s*(\d{4})\b/g, "$1-$2");
+      
+      return formattedLine;
+    });
+    
+    return formattedLines.join("\n");
+  };
+
   const handleAddNewSchool = () => {
     if (!newSchoolName.trim() || !newSchoolAddr.trim()) return;
     const newSchool: School = {
@@ -333,6 +383,42 @@ export default function App() {
     ) {
       setSchools(defaultSchools);
       localStorage.removeItem("b2p_schools_database");
+    }
+  };
+
+  const handleDownloadTemplate = () => {
+    try {
+      const templateData = [
+        {
+          "School Name": "Sree Rama Convent Senior Secondary School",
+          "Recipient Address": "Ashram Lane, Punkunnam\nThrissur, Kerala Pin - 680002"
+        },
+        {
+          "School Name": "Amala Mary Rani Public School",
+          "Recipient Address": "Puranattukara P.O., Thrissur\nKerala - 680551\nIndia"
+        },
+        {
+          "School Name": "St. Paul's Public School",
+          "Recipient Address": "St. Paul's Street, Kuriachira\nThrissur, Kerala Pin - 680006"
+        }
+      ];
+      
+      const worksheet = XLSX.utils.json_to_sheet(templateData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Recipient Roster");
+      
+      const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+      const dataBlob = new Blob([excelBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      
+      const url = window.URL.createObjectURL(dataBlob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", "Envelope_Addresses_Template.xlsx");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err) {
+      alert("Could not generate Excel template. Please try refreshing.");
     }
   };
 
@@ -783,13 +869,24 @@ export default function App() {
               className="hidden"
             />
 
-            <div className="mt-4 flex gap-2">
+            <div className="mt-4 flex gap-2 font-sans font-extrabold uppercase text-[10px] tracking-wider select-none">
               <button
+                type="button"
                 onClick={handleResetToPresets}
-                className="w-full flex items-center justify-center gap-1 text-[11px] font-bold text-slate-500 hover:text-slate-800 py-1.5 border border-slate-200 hover:border-slate-300 rounded-md bg-white transition-all cursor-pointer"
+                className="flex-1 flex items-center justify-center gap-1.5 text-[10px] font-bold text-slate-500 hover:text-slate-800 py-2 border border-slate-200 hover:border-slate-300 rounded-lg bg-white transition-all cursor-pointer"
+                title="Restore default 40 school records"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
-                <span>Reset to 40 Presets</span>
+                <span>Reset 40</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleDownloadTemplate}
+                className="flex-1 flex items-center justify-center gap-1.5 text-[10px] font-bold text-red-600 hover:text-white py-2 border border-red-200 hover:border-red-600 rounded-lg bg-white hover:bg-red-600 transition-all cursor-pointer"
+                title="Download standard Excel layout format"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Template</span>
               </button>
             </div>
           </div>
@@ -887,9 +984,22 @@ export default function App() {
               </div>
 
               <div>
-                <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-wider mb-1">
-                  Complete Address Location
-                </label>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">
+                    Complete Address Location
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNewSchoolAddr(autoFormatAddressText(newSchoolAddr));
+                    }}
+                    className="text-[9px] font-extrabold text-red-600 hover:text-red-700 hover:bg-red-50 px-2 py-0.5 rounded border border-red-100 flex items-center gap-1 cursor-pointer transition-all uppercase"
+                    title="Convert to Title Case and clean zip code formatting"
+                  >
+                    <Sparkles className="w-2.5 h-2.5" />
+                    <span>Auto-Format</span>
+                  </button>
+                </div>
                 <textarea
                   placeholder="e.g. Street, Region, Kerala - Pin Code"
                   rows={3}
@@ -2137,9 +2247,25 @@ export default function App() {
               </div>
 
               <div>
-                <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1">
-                  Recipient Address coordinates:
-                </label>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest">
+                    Recipient Address coordinates:
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingSchool({
+                        ...editingSchool,
+                        address: autoFormatAddressText(editingSchool.address || "")
+                      });
+                    }}
+                    className="text-[9px] font-extrabold text-red-600 hover:text-red-700 hover:bg-red-50 px-2 py-0.5 rounded border border-red-100 flex items-center gap-1 cursor-pointer transition-all uppercase"
+                    title="Convert to Title Case and clean zip code formatting"
+                  >
+                    <Sparkles className="w-2.5 h-2.5" />
+                    <span>Auto-Format</span>
+                  </button>
+                </div>
                 <textarea
                   rows={4}
                   value={editingSchool.address || ""}
